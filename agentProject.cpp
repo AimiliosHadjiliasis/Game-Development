@@ -63,7 +63,7 @@ void calculations(IModel* thief, IModel* guard, float &x, float &y, float &z, fl
 
 	//Calculate dot product: (of guards facing vector and the vector between the guard and the thief)
 	dotProduct = (dx*x + dy * y + dz * z);
-	cout << dotProduct << endl;
+	//cout << dotProduct << endl;
 }
 bool sphereToSpereCollisionDetection(IModel* Model1, IModel* Model2, float RadiusOne, float RadiusTwo)
 {
@@ -94,8 +94,33 @@ bool sphereToSpereCollisionDetection(IModel* Model1, IModel* Model2, float Radiu
 	if (collisionDistance <= (RadiusOne + RadiusTwo)) {
 		collision = true;
 	}
-	return collision;
-	
+	return collision;	
+}
+
+void guardFollowing(IModel* thief, IModel* guard, float& guardStep)
+{
+	float thiefCurrentX = thief->GetLocalX();
+	float thiefCurrentY = thief->GetLocalY();
+	float thiefCurrentZ = thief->GetLocalZ();
+	//Make the guard follow the thief
+	//(1) The guard follow the thief on Z-axis
+	if (guard->GetLocalZ() <= thiefCurrentZ)
+	{
+		guard->MoveZ(guardStep);
+	}
+	if (guard->GetLocalZ() >= thiefCurrentZ)
+	{
+		guard->MoveZ(-guardStep);
+	}
+	//(2) The guard follow the thief on x-axis
+	if (guard->GetLocalX() <= thiefCurrentX)
+	{
+		guard->MoveX(guardStep);
+	}
+	if (guard->GetLocalX() >= thiefCurrentX)
+	{
+		guard->MoveX(-guardStep);
+	}
 }
 
 void main()
@@ -150,16 +175,24 @@ void main()
 		// Draw the scene
 		myEngine->DrawScene();
 
-		/**** Update your scene each frame here ****/
+		//------------------------------------------------------//
+		//  Varriable that used for the movement of the Models  //
+		//------------------------------------------------------//
+
 		float dt = myEngine->Timer();
 		float thiefVelocity = 10;
 		float thiefStep = thiefVelocity * dt;
 		float thiefSteeringVelocity = 200;
 		float thiefSteeringStep = thiefSteeringVelocity * dt;
+		float guardVelocity = 8;
+		float guardStep = guardVelocity * dt;
 
-
+		//find and calculatethe angles to see if the thief is behind the guard
 		calculations(thief, guard, x, y, z, dotProduct);
+
+		//Movement controls of the thief
 		thiefMovement(myEngine, thief, thiefStep, thiefSteeringStep);
+
 
 		switch (guardState)
 		{
@@ -188,17 +221,16 @@ void main()
 				guard->Scale(4);
 				state->SetSkin("red.png");
 
-				float thiefCurrentX = thief->GetLocalX();
-				float thiefCurrentY = thief->GetLocalY();
-				float thiefCurrentZ = thief->GetLocalZ();
-				//TODO: Make the guard follow the thief
+				guardFollowing(thief, guard, guardStep);
 
+
+				//Change state:
+				//(1) IDLE state if the guard is 12 units away from the thief
 				if (!sphereToSpereCollisionDetection(thief, guard, 24, 24))
 				{
 					guardState = idle;
 				}
-
-				//Move to Dead state if there is a full collision between the guard and the thief)
+				//(2) DEAD state if the thief touch the guard
 				if (sphereToSpereCollisionDetection(thief, guard, 1, 1))
 				{
 					guardState = dead;
@@ -217,9 +249,52 @@ void main()
 				break;
 		}
 
+
 		//TODO: Make the guard patrol on 3 or more points
 		switch (guardPatrollingState)
 		{
+
+			case 0:
+			{
+				guard->MoveZ(0.005);
+
+				if (guard->GetLocalZ() >= 50)
+				{
+					guardPatrollingState = 1;
+				}
+				break;
+			}
+			case 1:
+			{	
+				
+				guard->MoveX(-0.005);
+				guard->RotateY(-90);
+
+
+				if (guard->GetLocalX() <= -50)
+				{
+					guardPatrollingState = 2;
+				}
+				break;
+			}
+			case 2:
+			{	
+
+				guard->MoveZ(-0.05);
+				guard->RotateLocalY(180);
+
+				if (guard->GetLocalZ() <= 0)
+				{
+					guardPatrollingState = 3;
+				}
+
+				break;
+			}
+			case 3:
+			{
+
+				break;
+			}
 		default:
 			break;
 		}
