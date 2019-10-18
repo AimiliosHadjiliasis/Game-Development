@@ -23,7 +23,7 @@ using namespace tle;
 #define walk 1
 #define run 2
 
-void speedOfThief(I3DEngine* myEngine , int& thiefSpeed, float& thiefVelocity)
+void speedOfThief(I3DEngine* myEngine, int& thiefSpeed, float& thiefVelocity)
 {
 	switch (thiefSpeed)
 	{
@@ -103,7 +103,7 @@ void thiefMovement(I3DEngine* myEngine, IModel* thief, float& thiefStep, float& 
 	}
 }
 void calculations(IModel* thief, IModel* guard, float &x, float &y, float &z, float &dotProduct)
-{	
+{
 	//Calculate facing vector (orientation) of the guard
 	float matrix[16];
 	guard->GetMatrix(matrix);
@@ -134,10 +134,10 @@ void calculations(IModel* thief, IModel* guard, float &x, float &y, float &z, fl
 bool sphereToSpereCollisionDetection(IModel* Model1, IModel* Model2, float RadiusOne, float RadiusTwo)
 {
 	/*
-		Gennerally this is the collision function that
-		checks and return true or false idepence if a collision happens.
-		This collision function checks the collision between
-		the hover and all the objects in the map.
+	Gennerally this is the collision function that
+	checks and return true or false idepence if a collision happens.
+	This collision function checks the collision between
+	the hover and all the objects in the map.
 	*/
 
 	bool collision = false;
@@ -160,7 +160,7 @@ bool sphereToSpereCollisionDetection(IModel* Model1, IModel* Model2, float Radiu
 	if (collisionDistance <= (RadiusOne + RadiusTwo)) {
 		collision = true;
 	}
-	return collision;	
+	return collision;
 }
 void guardFollowing(IModel* thief, IModel* guard, float& guardStep)
 {
@@ -187,7 +187,7 @@ void guardFollowing(IModel* thief, IModel* guard, float& guardStep)
 		guard->MoveX(-guardStep);
 	}
 }
-void gameKeys(I3DEngine * myEngine, IModel* guard, int& guardState, int& guardPatrollingState, IModel* thief)
+void gameKeys(I3DEngine * myEngine, IModel* guard, int& guardState, int& guardPatrollingState, IModel* thief,IModel* state)
 {
 	//	Game Keys:
 	//----------------------
@@ -200,6 +200,7 @@ void gameKeys(I3DEngine * myEngine, IModel* guard, int& guardState, int& guardPa
 		guardPatrollingState = up;
 		thief->ResetOrientation();
 		thief->SetPosition(40, 0, 0);
+		state->SetSkin("blue.png");
 	}
 
 	//(2) Exit Game:
@@ -283,7 +284,122 @@ void patrolling(int& guardPatrollingState, IModel* guard, float& guardStep)
 		break;
 	}
 }
+void idleUpdate(int& guardPatrollingState, IModel* guard, float guardStep)
+{
+	patrolling(guardPatrollingState, guard, guardStep);
+	guard->ResetOrientation();
 
+}
+void idleTransition(int& thiefSpeed, IModel* thief, IModel* guard, float radiusToLocate, float dotProduct, 
+	int& guardState, float radiusToLocateIfThiefRuns, IModel* square[], int radiusToDie, IModel* state)
+{
+	if (thiefSpeed != creep)
+	{
+		//Change state to alert if the guard is close to the thief:
+		if (sphereToSpereCollisionDetection(thief, guard, radiusToLocate, radiusToLocate) && dotProduct >= 0)
+		{	
+			state->SetSkin("red.png");
+			guardState = alert;
+		}
+
+		//Change state to alert if the guard is close to the thief:
+		//(But the thief is running)
+		if (thiefSpeed = run)
+		{
+			if (sphereToSpereCollisionDetection(thief, guard, radiusToLocateIfThiefRuns, radiusToLocateIfThiefRuns) && dotProduct >= 0)
+			{	
+				state->SetSkin("red.png");
+				guardState = alert;
+			}
+		}
+
+		//Change state to alert if the guard is in the noizy area:
+		for (int i = 0; i < 4; i++)
+		{
+			if (sphereToSpereCollisionDetection(thief, square[i], 4, 4)
+				&& sphereToSpereCollisionDetection(square[i], guard, 15, 15) && dotProduct >= 0)
+			{
+				guardState = alert;
+			}
+		}
+	}
+
+
+	//Change state if the thief touch the guard:
+	if (sphereToSpereCollisionDetection(thief, guard, radiusToDie, radiusToDie))
+	{
+		guardState = dead;
+	}
+}
+void alertUpdate(IModel* thief, IModel* guard, float guardStep)
+{
+	guardFollowing(thief, guard, guardStep);
+	guard->LookAt(thief);
+	guard->Scale(4);
+}
+void alertTransition(IModel* thief, IModel* guard, int radiusToLeave, IModel* state, int& guardState, 
+	int radiusToDie, float dotProduct)
+{
+	//Change state:
+	//(1) IDLE state if the guard is 12 units away from the thief
+	if (!sphereToSpereCollisionDetection(thief, guard, radiusToLeave, radiusToLeave))
+	{
+		state->SetSkin("blue.png");
+		guardState = idle;
+	}
+	//(2) DEAD state if the thief touch the guard
+	if (sphereToSpereCollisionDetection(thief, guard, radiusToDie, radiusToDie))
+	{
+		state->SetSkin("purple.png");
+		guardState = dead;
+	}
+	//(3) WIN state if the thief touch the guard
+	if (sphereToSpereCollisionDetection(thief, guard, radiusToDie, radiusToDie) && dotProduct >= 0)
+	{
+		state->SetSkin("violet.png");
+		guardState = win;
+	}
+
+
+}
+void stateOfTheGuard(int& guardState, IModel* thief, IModel* guard, int radiusToLeave, IModel* state, 
+	int radiusToDie, float dotProduct, int& guardPatrollingState, float guardStep, int& thiefSpeed, int radiusToLocate,
+	int radiusToLocateIfThiefRuns, IModel* square[])
+{
+
+	switch (guardState)
+	{
+	case idle:
+	{
+		idleUpdate(guardPatrollingState, guard, guardStep);
+		idleTransition(thiefSpeed, thief, guard, radiusToLocate, dotProduct, guardState, radiusToLocateIfThiefRuns, square, radiusToDie, state);
+		break;
+	}
+
+	case alert:
+	{
+		alertUpdate(thief, guard, guardStep);
+		alertTransition(thief, guard, radiusToLeave, state, guardState, radiusToDie, dotProduct);
+		break;
+	}
+
+	case dead:
+	{
+
+		break;
+	}
+
+	case win:
+	{
+
+		break;
+	}
+	default:
+		break;
+	}
+
+
+}
 void main()
 {
 	// Create a 3D engine (using TLX engine here) and open a window for it
@@ -291,17 +407,17 @@ void main()
 	myEngine->StartWindowed();
 
 	//Folders for meshes and models:
-	myEngine->AddMediaFolder( "C:\\Program Files (x86)\\TL-Engine\\Media" );
-	//myEngine->AddMediaFolder("C:\\ProgramData\\TL-Engine\\Media");
-	myEngine->AddMediaFolder("./media");
+	//myEngine->AddMediaFolder("C:\\Program Files (x86)\\TL-Engine\\Media");
+	myEngine->AddMediaFolder("C:\\ProgramData\\TL-Engine\\Media");
+	myEngine->AddMediaFolder(".\\models");
 
 
 	//--------------------------------------------------------//
 	//                Code that executed once                 //
 	//--------------------------------------------------------//
-	
+
 	//Camera:
-	ICamera* camera = myEngine->CreateCamera(kFPS, 0, 35, -60);
+	ICamera* camera = myEngine->CreateCamera(kManual, 0 , 10 ,-20);
 	camera->RotateLocalX(20);
 
 	//Floor:
@@ -311,17 +427,17 @@ void main()
 	//Squares(Areas):
 	IMesh* msquare = myEngine->LoadMesh("Square.x");
 	IModel* square[4];
-	square[0] = msquare->CreateModel(20,-5, 20);
-	square[1] = msquare->CreateModel(20,-5, 0);
-	square[2] = msquare->CreateModel(20,-5, 10);
+	square[0] = msquare->CreateModel(20, -5, 20);
+	square[1] = msquare->CreateModel(20, -5, 0);
+	square[2] = msquare->CreateModel(20, -5, 10);
 	square[3] = msquare->CreateModel(20, -5, -5);
 
-		//Set skin for the boxes and rotate them so they are visible:
-		for (int i = 0; i < 4; i++)
-		{
-			square[i]->SetSkin("red.png");
-			square[i]->RotateX(90);
-		}
+	//Set skin for the boxes and rotate them so they are visible:
+	for (int i = 0; i < 4; i++)
+	{
+		square[i]->SetSkin("red.png");
+		square[i]->RotateX(90);
+	}
 
 	//Guard:
 	IMesh* mGuard = myEngine->LoadMesh("casual_A.x");
@@ -332,6 +448,7 @@ void main()
 	float z;
 	int guardState = 0;
 	int guardPatrollingState = 0;
+	
 
 	//Thief:
 	IMesh* mThief = myEngine->LoadMesh("sierra.x");
@@ -339,24 +456,25 @@ void main()
 	thief->Scale(4);
 	int thiefSpeed = walk;
 	float thiefVelocity;
-
+	camera->AttachToParent(thief);
 	//State:
 	IMesh* mState = myEngine->LoadMesh("state.x");
 	IModel* state = mState->CreateModel(0, 5, 0);
 	state->Scale(2);
 	state->AttachToParent(guard);
+	state->SetSkin("blue.png");
 
 	//Grid ( help for locating things )
 	//IMesh* mGrid = myEngine->LoadMesh("grid.x");
 	//IModel* grid = mGrid->CreateModel();
-	
+
 	float dotProduct;
 	float radiusToLeave = 24.0;
 	float radiusToDie = 1.0;
 	float radiusToLocate = 5;
 	float radiusToLocateIfThiefRuns = 15;
 
-	
+
 	//-----------------------------------------------------//
 	//            Code that executed every frame           //
 	//-----------------------------------------------------//
@@ -364,131 +482,32 @@ void main()
 	{
 		// Draw the scene
 		myEngine->DrawScene();
-	
+
 		//Function that determines what is the speed of velocity of the guard:
 		speedOfThief(myEngine, thiefSpeed, thiefVelocity);
 
 		//------------------------------------------------------//
 		//  Varriable that used for the movement of the Models  //
 		//------------------------------------------------------//
-			float dt = myEngine->Timer();
-			float thiefStep = thiefVelocity * dt;
-			float thiefSteeringVelocity = 200;
-			float thiefSteeringStep = thiefSteeringVelocity * dt;
-			float guardVelocity = 15;
-			float guardStep = guardVelocity * dt;
-		
+		float dt = myEngine->Timer();
+		float thiefStep = thiefVelocity * dt;
+		float thiefSteeringVelocity = 200;
+		float thiefSteeringStep = thiefSteeringVelocity * dt;
+		float guardVelocity = 15;
+		float guardStep = guardVelocity * dt;
+
 		//Find and calculatethe angles to see if the thief is behind the guard:
 		calculations(thief, guard, x, y, z, dotProduct);
 
-		
-		if (myEngine->KeyHit(Key_5))
-		{
-			cout << thiefVelocity << endl;
-		}
 		//Movement controls of the thief:
 		thiefMovement(myEngine, thief, thiefStep, thiefSteeringStep);
 
-
-		switch (guardState)
-		{
-			case idle:
-			{
-				state->SetSkin("blue.png");
-				guard->ResetOrientation();
-
-				if (thiefSpeed != creep)
-				{
-					//Change state to alert if the guard is close to the thief:
-					if (sphereToSpereCollisionDetection(thief, guard, radiusToLocate, radiusToLocate) && dotProduct >= 0)
-					{
-						guardState = alert;
-					}
-
-					//Change state to alert if the guard is close to the thief:
-					//(But the thief is running)
-					if (thiefSpeed = run)
-					{
-						if (sphereToSpereCollisionDetection(thief, guard, radiusToLocateIfThiefRuns, radiusToLocateIfThiefRuns) && dotProduct >= 0)
-						{
-							guardState = alert;
-						}
-					}
-
-					//Change state to alert if the guard is in the noizy area:
-					for (int i = 0; i < 4; i++)
-					{
-						if (sphereToSpereCollisionDetection(thief, square[i], 4, 4)
-							&& sphereToSpereCollisionDetection(square[i], guard, 15, 15) && dotProduct >= 0)
-						{
-							guardState = alert;
-						}
-					}
-				}
-
-
-				//Change state if the thief touch the guard:
-				if (sphereToSpereCollisionDetection(thief, guard, radiusToDie, radiusToDie))
-				{
-					guardState = dead;
-				}
-
-				break;
-			}
-
-			case alert:
-			{		
-				state->SetSkin("red.png");
-
-				guardFollowing(thief, guard, guardStep);
-				//guard->LookAt(thief);
-				//guard->Scale(4);
-
-				//Change state:
-				//(1) IDLE state if the guard is 12 units away from the thief
-				if (!sphereToSpereCollisionDetection(thief, guard, radiusToLeave, radiusToLeave))
-				{
-					guardState = idle;
-				}
-				//(2) DEAD state if the thief touch the guard
-				if (sphereToSpereCollisionDetection(thief, guard, radiusToDie, radiusToDie))
-				{
-					guardState = dead;
-				}
-				//(3) WIN state if the thief touch the guard
-				if (sphereToSpereCollisionDetection(thief, guard, radiusToDie, radiusToDie) && dotProduct >= 0)
-				{
-					guardState = win;
-				}
-
-				break;
-			}
-
-			case dead:
-			{
-				state->SetSkin("purple.png");
-				break;
-			}
-			
-			case win:
-			{
-				state->SetSkin("violet.png");
-				
-				break;
-			}
-			default:
-				break;
-		}
-		
-		if (guardState == idle || guardState == alert)
-		{
-			patrolling(guardPatrollingState, guard, guardStep);
-		}
-
-
+		//Contol the state of the guard
+		stateOfTheGuard(guardState, thief, guard, radiusToLeave, state, radiusToDie, dotProduct, guardPatrollingState, 
+			guardStep, thiefSpeed, radiusToLocate,radiusToLocateIfThiefRuns, square);
 
 		//Key Controls of the game:
-		gameKeys(myEngine, guard, guardState, guardPatrollingState, thief);
+		gameKeys(myEngine, guard, guardState, guardPatrollingState, thief, state);
 	}
 
 	// Delete the 3D engine now we are finished with it
