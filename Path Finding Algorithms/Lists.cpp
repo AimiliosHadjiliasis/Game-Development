@@ -52,5 +52,13 @@ int main()
 	firstList.sort();										//Sort the list from Minmum to Maximum
 	showList(firstList);
 
+	cout << "\nIs the List (firstList) empty?"<<endl;			//Checks if the list is empty
+															//Returns:
+															//1:Empty  0:Not Empty
+	if (firstList.empty())
+		cout << "Empty List\n";
+	else
+		cout << "Not Empty\n";
+
 	return 0;
 }
