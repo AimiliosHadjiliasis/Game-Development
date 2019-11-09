@@ -34,7 +34,7 @@ void display(deque <coords*> openList)
 
 	while (p != openList.end())
 	{	
-		cout << "( " << (*p)->x <<" , "<<  + (*p)->y <<" ) " <<endl;;
+		cout << "( " << (*p)->x <<" , "<<  + (*p)->y <<" ) " <<endl;
 		p++;
 	}
 }
