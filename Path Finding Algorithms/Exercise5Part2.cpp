@@ -25,6 +25,22 @@ void display(deque <coords*> openList)
 	}
 }
 
+bool check(deque <coords*> openList, int num1, int num2)
+{
+	deque <coords*> ::iterator p;
+	p = openList.begin();
+	while (p != openList.end())
+	{
+		if (((*p)->x == num1) && ((*p)->y == num2))
+		{
+			return 1;
+		}
+		p++;
+	}
+
+	return 0;
+}
+
 void freeMemory(deque <coords*> openList, coords* tmp)
 {
 	deque <coords*> ::iterator p;
@@ -85,7 +101,23 @@ int main()
 	cout << "\nCloseList:" << endl;
 	cout << "------------------" << endl;
 	display(closeList);
+	
+	//(5) 	Construct find function.
+	cout << "Give x:" << endl;
+	cin >> num1;
+	"/n";
+	cout << "Give y:" << endl;
+	cin >> num2;
+	"/n";
 
+	if (check(openList, num1, num2))
+	{
+		cout << "Exist" << endl;
+	}
+	else
+	{
+		cout << "Not Exist" << endl;
+	}
 
 	freeMemory(closeList, tmp);
 	cout << closeList.front()->x << " " << closeList.front()->y << endl;
